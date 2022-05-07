@@ -1,11 +1,14 @@
 package com.example.demorest.controllers;
 
 import com.example.demorest.assembler.EmployeeModelAssembler;
-import com.example.demorest.entities.Employee;
-import com.example.demorest.exceptions.EmployeeNotFoundException;
-import com.example.demorest.repositories.EmployeeRepository;
+import com.example.demorest.dto.EmployeeDTO;
+import com.example.demorest.mapping.EmployeeMappingService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,57 +19,60 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 public class EmployeeController {
-    private final EmployeeRepository repository;
+    private final EmployeeMappingService employeeMappingService;
     private final EmployeeModelAssembler assembler;
 
-    public EmployeeController(EmployeeRepository repository, EmployeeModelAssembler assembler) {
-        this.repository = repository;
+    @Autowired
+    public EmployeeController(EmployeeModelAssembler assembler, EmployeeMappingService employeeMappingService) {
+        Assert.notNull(assembler, "assembler must not be null!");
         this.assembler = assembler;
+        Assert.notNull(employeeMappingService, "employeeMappingService must not be null!");
+        this.employeeMappingService = employeeMappingService;
     }
 
-    //Aggregate root
-    //tag::get-aggregate-root[]
+    //all employees
     @GetMapping("/employees")
-    public CollectionModel<EntityModel<Employee>> all() {
-        List<EntityModel<Employee>> employees = repository.findAll().stream()
+    public CollectionModel<EntityModel<EmployeeDTO>> all() {
+        List<EmployeeDTO> employeesDTO = employeeMappingService.getAllEmployees();
+        List<EntityModel<EmployeeDTO>> employees = employeesDTO.stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
 
         return CollectionModel.of(employees,
                 linkTo(methodOn(EmployeeController.class).all()).withSelfRel());
     }
-    //end::get-aggregate-root[]
 
-    @PostMapping("/employees")
-    public Employee newEmployee(@RequestBody Employee newEmployee) {
-        return repository.save(newEmployee);
-    }
-
-    //Single item
-
+    //Single employee
     @GetMapping("/employees/{id}")
-    public EntityModel<Employee> singleEmployee(@PathVariable Long id) {
-        Employee employee = repository.findById(id).orElseThrow(() -> new EmployeeNotFoundException(id));
+    public EntityModel<EmployeeDTO> singleEmployee(@PathVariable Long id) {
+        EmployeeDTO employee = employeeMappingService.getSingleEmployee(id);
 
         return assembler.toModel(employee);
     }
 
-    @PutMapping("/employee/{id}")
-    public Employee replaceEmployee(@RequestBody Employee newEmployee, @PathVariable Long id) {
-        return repository.findById(id).map(employee -> {
-            employee.setName(newEmployee.getName());
-            employee.setRole(newEmployee.getRole());
-            return repository.save(employee);
-        })
-        .orElseGet(() -> {
+    @PostMapping("/employees")
+    public ResponseEntity<?> newEmployee(@RequestBody EmployeeDTO newEmployee) {
+        EntityModel<EmployeeDTO> entityModel = assembler.toModel(employeeMappingService.save(newEmployee));
+
+        return ResponseEntity.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
+                .body(entityModel);
+    }
+
+    @PutMapping("/employees/{id}")
+    public EmployeeDTO replaceEmployee(@RequestBody EmployeeDTO newEmployee, @PathVariable Long id) {
+        try {
+            EmployeeDTO employeeDTO = employeeMappingService.getSingleEmployee(id);
+            employeeDTO.setName(newEmployee.getName());
+            employeeDTO.setRole(newEmployee.getRole());
+            return employeeMappingService.save(employeeDTO);
+        } catch (Exception e) {
             newEmployee.setId(id);
-            return repository.save(newEmployee);
-        });
+            return employeeMappingService.save(newEmployee);
+        }
     }
 
     @DeleteMapping("/employees/{id}")
     public void deleteEmployee(@PathVariable Long id) {
-        repository.deleteById(id);
+        employeeMappingService.deleteById(id);
     }
-
 }

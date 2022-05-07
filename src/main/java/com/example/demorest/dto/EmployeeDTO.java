@@ -1,44 +1,28 @@
-package com.example.demorest.entities;
+package com.example.demorest.dto;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
 import java.util.Objects;
 
-@Entity
-public class Employee {
-    @Id
-    @GeneratedValue
-    private long id;
+public class EmployeeDTO {
+    private Long id;
     private String name;
     private String firstName;
     private String lastName;
     private String role;
 
-    public Employee() {}
-    public Employee(String firstName, String lastName, String role) {
-        this.name = firstName + " " + lastName;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.role = role;
-    }
-
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
     public String getName() {
-        return firstName + " " + lastName;
+        return name;
     }
 
     public void setName(String name) {
-        String[] parts = name.split(" ");
-        this.firstName = parts[0];
-        this.lastName = parts[1];
+        this.name = name;
     }
 
     public String getFirstName() {
@@ -69,19 +53,20 @@ public class Employee {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Employee employee = (Employee) o;
-        return id == employee.id && Objects.equals(firstName, employee.firstName) && Objects.equals(lastName, employee.lastName) && Objects.equals(role, employee.role);
+        EmployeeDTO that = (EmployeeDTO) o;
+        return Objects.equals(name, that.name) && Objects.equals(firstName, that.firstName) && Objects.equals(lastName, that.lastName) && Objects.equals(role, that.role);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, firstName, lastName, role);
+        return Objects.hash(name, firstName, lastName, role);
     }
 
     @Override
     public String toString() {
-        return "Employee{" +
+        return "EmployeeDTO{" +
                 "id=" + id +
+                ", name='" + name + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", role='" + role + '\'' +
